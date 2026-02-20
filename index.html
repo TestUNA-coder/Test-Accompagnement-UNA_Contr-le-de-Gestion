@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test de Positionnement — Étude de Coût</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --accent: #c4472a;
+    --gold: #d4a017;
+    --muted: #7a6e5f;
+    --line: #d6cfc2;
+    --correct-bg: #e8f5e9;
+    --wrong-bg: #fdecea;
+    --correct-border: #4caf50;
+    --wrong-border: #c4472a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 27px, var(--line) 28px);
+  }
+
+  .wrapper { max-width: 780px; margin: 0 auto; }
+
+  header {
+    border-top: 4px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    padding: 1.5rem 0 1rem;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .corner-label {
+    position: absolute;
+    top: 1.5rem;
+    right: 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .score-bar {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.8rem 1.2rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  .score-bar.visible { display: flex; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-left: 4px solid var(--accent);
+    padding-left: 0.75rem;
+    margin: 2.5rem 0 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .section-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    background: var(--gold);
+    color: var(--ink);
+    padding: 0.15rem 0.4rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .q-card {
+    background: white;
+    border: 1.5px solid var(--line);
+    margin-bottom: 1.2rem;
+    padding: 1.2rem 1.4rem;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+
+  .q-card::before {
+    content: attr(data-num);
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--line);
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    line-height: 1;
+  }
+
+  .q-card.answered-correct { border-color: var(--correct-border); background: var(--correct-bg); }
+  .q-card.answered-wrong   { border-color: var(--wrong-border);   background: var(--wrong-bg); }
+
+  .question-text {
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+    padding-right: 2rem;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .option-label {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.9rem;
+    border: 1.5px solid var(--line);
+    background: var(--paper);
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.15s;
+  }
+  .option-label:hover { border-color: var(--ink); background: #ede8de; }
+  .option-label input { display: none; }
+
+  .option-dot {
+    width: 16px; height: 16px;
+    border: 2px solid var(--muted);
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .option-label.selected .option-dot { background: var(--ink); border-color: var(--ink); }
+  .option-label.correct-answer { background: var(--correct-bg); border-color: var(--correct-border); font-weight: 500; }
+  .option-label.wrong-answer   { background: var(--wrong-bg);   border-color: var(--wrong-border);   text-decoration: line-through; opacity: 0.8; }
+
+  .explanation {
+    display: none;
+    margin-top: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    border-left: 3px solid var(--gold);
+    background: #fdf8ec;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .explanation.visible { display: block; }
+
+  .submit-area { margin: 2.5rem 0; text-align: center; }
+
+  .submit-btn {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.9rem 2.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.2s;
+  }
+  .submit-btn:hover { background: var(--accent); }
+
+  .results-panel {
+    display: none;
+    border: 3px solid var(--ink);
+    padding: 2rem;
+    margin: 2rem 0;
+    text-align: center;
+  }
+  .results-panel.visible { display: block; }
+
+  .result-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .result-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  .result-profile {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 1.2rem 0 0.5rem;
+  }
+
+  .result-advice {
+    font-size: 0.88rem;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .breakdown-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .breakdown-val {
+    font-size: 1.5rem;
+    font-weight: 500;
+    display: block;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .reset-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem 1.2rem;
+    border: 1.5px solid var(--muted);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    margin-top: 1.5rem;
+    letter-spacing: 0.05em;
+  }
+  .reset-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* Identity block */
+  .identity-block {
+    background: white;
+    border: 2px solid var(--ink);
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .identity-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .identity-title::before {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .identity-fields {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .identity-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .identity-field label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .identity-field input {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 0.55rem 0.8rem;
+    border: 1.5px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .identity-field input:focus {
+    border-color: var(--ink);
+  }
+
+  .identity-field input.field-error {
+    border-color: var(--accent);
+    background: var(--wrong-bg);
+  }
+
+  .identity-error {
+    display: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    margin-top: 0.8rem;
+  }
+  .identity-error.visible { display: block; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Admin overlay ── */
+  .admin-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,18,8,0.75); z-index: 1000;
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  .admin-overlay.visible { display: flex; }
+  .admin-modal {
+    background: var(--paper); border: 3px solid var(--ink);
+    width: 100%; max-width: 880px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .admin-header {
+    background: var(--ink); color: var(--paper);
+    padding: 0.9rem 1.4rem; display: flex;
+    align-items: center; justify-content: space-between; gap: 1rem; flex-shrink: 0;
+  }
+  .admin-header-title {
+    font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .admin-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    background: var(--accent); color: white; padding: 0.15rem 0.5rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .admin-close {
+    font-family: 'DM Mono', monospace; font-size: 1.2rem;
+    background: none; border: none; color: var(--paper);
+    cursor: pointer; opacity: 0.7; transition: opacity 0.15s; padding: 0;
+  }
+  .admin-close:hover { opacity: 1; }
+  .admin-toolbar {
+    padding: 0.8rem 1.4rem; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; flex-wrap: wrap; gap: 0.6rem;
+  }
+  .admin-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+  .admin-count strong { color: var(--ink); }
+  .admin-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .btn-export {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    padding: 0.45rem 1rem; background: var(--ink); color: var(--paper);
+    border: none; cursor: pointer; letter-spacing: 0.05em; transition: background 0.15s;
+  }
+  .btn-export:hover { background: #388e3c; }
+  .btn-clear {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    padding: 0.45rem 1rem; background: transparent; color: var(--accent);
+    border: 1.5px solid var(--accent); cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s;
+  }
+  .btn-clear:hover { background: var(--accent); color: white; }
+  .admin-table-wrap { overflow: auto; flex: 1; padding: 1rem 1.4rem; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .admin-table th {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    background: #ece7db; padding: 0.55rem 0.8rem; text-align: left;
+    border-bottom: 2px solid var(--ink); white-space: nowrap;
+  }
+  .admin-table td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .admin-table tr:hover td { background: #f0ebe0; }
+  .score-pill {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 600;
+    padding: 0.2rem 0.5rem; border-radius: 2px; display: inline-block;
+  }
+  .score-pill.low  { background: var(--wrong-bg);   color: var(--accent); }
+  .score-pill.mid  { background: #fff8e1;            color: #b06a00; }
+  .score-pill.high { background: var(--correct-bg); color: #2e7d32; }
+  .empty-state {
+    text-align: center; padding: 2.5rem 1rem;
+    font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted);
+  }
+  /* ── Login modal ── */
+  .login-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,18,8,0.82); z-index: 999;
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  .login-overlay.visible { display: flex; }
+  .login-box {
+    background: var(--paper); border: 3px solid var(--ink);
+    padding: 2rem; width: 100%; max-width: 320px; text-align: center;
+  }
+  .login-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .login-sub { font-family: 'DM Mono', monospace; font-size: 0.63rem; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 1.4rem; }
+  .login-input {
+    font-family: 'DM Mono', monospace; font-size: 1rem;
+    padding: 0.6rem 1rem; border: 1.5px solid var(--line); background: white;
+    width: 100%; text-align: center; letter-spacing: 0.2em; outline: none;
+    margin-bottom: 0.8rem; transition: border-color 0.15s;
+  }
+  .login-input:focus { border-color: var(--ink); }
+  .login-input.error { border-color: var(--accent); background: var(--wrong-bg); }
+  .login-btn {
+    font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 700;
+    padding: 0.65rem 1.8rem; background: var(--ink); color: var(--paper);
+    border: none; cursor: pointer; width: 100%; transition: background 0.15s;
+  }
+  .login-btn:hover { background: var(--accent); }
+  .login-error { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--accent); margin-top: 0.6rem; display: none; }
+  .login-error.visible { display: block; }
+  .login-cancel { font-family: 'DM Mono', monospace; font-size: 0.63rem; color: var(--muted); background: none; border: none; cursor: pointer; margin-top: 0.8rem; text-decoration: underline; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="tag">Formation · Contrôle de Gestion</div>
+    <h1>Test de<br><span>Positionnement</span></h1>
+    <p class="subtitle">Étude de Coût &amp; Comptabilité Générale · 13 questions</p>
+    <div class="corner-label">Durée estimée<br>10–15 min</div>
+  </header>
+
+  <div class="score-bar" id="scoreBar">
+    <span>PROGRESSION</span>
+    <span id="scoreText">0 / 13 répondues</span>
+  </div>
+
+  <!-- ══════════════════════ IDENTITY BLOCK -->
+  <div class="identity-block">
+    <div class="identity-title">Identification du participant</div>
+    <div class="identity-fields">
+      <div class="identity-field">
+        <label for="nomAdherent">Nom adhérent</label>
+        <input type="text" id="nomAdherent" placeholder="Ex : Dupont Marie" autocomplete="name">
+      </div>
+      <div class="identity-field">
+        <label for="numAdherent">Numéro adhérent</label>
+        <input type="text" id="numAdherent" placeholder="Ex : ADH-00123" autocomplete="off">
+      </div>
+    </div>
+    <div class="identity-error" id="identityError">⚠ Veuillez renseigner votre nom et votre numéro adhérent avant de valider.</div>
+  </div>
+
+  <!-- ══════════════════════ SECTION 1 -->
+  <div class="section-title">
+    <span>I. Comptabilité Générale</span>
+    <span class="section-badge">Bases</span>
+  </div>
+
+  <div class="q-card" data-num="01" id="q1">
+    <p class="question-text">1. Quel document comptable présente la situation patrimoniale de l'entreprise à un instant donné ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q1" value="a"><span class="option-dot"></span>Le compte de résultat</label>
+      <label class="option-label"><input type="radio" name="q1" value="b"><span class="option-dot"></span>Le bilan</label>
+      <label class="option-label"><input type="radio" name="q1" value="c"><span class="option-dot"></span>Le tableau de trésorerie</label>
+      <label class="option-label"><input type="radio" name="q1" value="d"><span class="option-dot"></span>L'annexe</label>
+    </div>
+    <div class="explanation" id="exp1">Le bilan photographie l'actif (emplois) et le passif (ressources) de l'entreprise à la date de clôture. C'est un état statique, contrairement au compte de résultat qui est dynamique.</div>
+  </div>
+
+  <div class="q-card" data-num="02" id="q2">
+    <p class="question-text">2. Le résultat net d'une entreprise est égal à :</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q2" value="a"><span class="option-dot"></span>Chiffre d'affaires − Charges variables</label>
+      <label class="option-label"><input type="radio" name="q2" value="b"><span class="option-dot"></span>Produits totaux − Charges totales</label>
+      <label class="option-label"><input type="radio" name="q2" value="c"><span class="option-dot"></span>Excédent brut d'exploitation − Intérêts</label>
+      <label class="option-label"><input type="radio" name="q2" value="d"><span class="option-dot"></span>Marge brute − Charges fixes</label>
+    </div>
+    <div class="explanation" id="exp2">Le résultat net comptable est la différence entre la totalité des produits (chiffre d'affaires, produits financiers…) et la totalité des charges (achats, salaires, dotations, impôts…).</div>
+  </div>
+
+  <div class="q-card" data-num="03" id="q3">
+    <p class="question-text">3. Dans le Plan Comptable Général, à quelle classe appartient le compte "Clients" ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q3" value="a"><span class="option-dot"></span>Classe 1 — Capitaux</label>
+      <label class="option-label"><input type="radio" name="q3" value="b"><span class="option-dot"></span>Classe 4 — Comptes de tiers</label>
+      <label class="option-label"><input type="radio" name="q3" value="c"><span class="option-dot"></span>Classe 5 — Comptes financiers</label>
+      <label class="option-label"><input type="radio" name="q3" value="d"><span class="option-dot"></span>Classe 7 — Produits</label>
+    </div>
+    <div class="explanation" id="exp3">Le compte 411 "Clients" appartient à la classe 4 "Comptes de tiers". Cette classe regroupe les créances et dettes vis-à-vis des partenaires externes (clients, fournisseurs, État…).</div>
+  </div>
+
+  <!-- ══════════════════════ SECTION 2 -->
+  <div class="section-title">
+    <span>II. Notions fondamentales des Coûts</span>
+    <span class="section-badge">Cœur</span>
+  </div>
+
+  <div class="q-card" data-num="04" id="q4">
+    <p class="question-text">4. Quelle est la différence entre charges directes et charges indirectes ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q4" value="a"><span class="option-dot"></span>Les charges directes sont fixes ; les indirectes sont variables</label>
+      <label class="option-label"><input type="radio" name="q4" value="b"><span class="option-dot"></span>Les charges directes sont affectables sans calcul intermédiaire à un coût ; les indirectes nécessitent une répartition</label>
+      <label class="option-label"><input type="radio" name="q4" value="c"><span class="option-dot"></span>Les charges indirectes ne font pas partie du coût de revient</label>
+      <label class="option-label"><input type="radio" name="q4" value="d"><span class="option-dot"></span>Les charges directes concernent uniquement la main-d'œuvre</label>
+    </div>
+    <div class="explanation" id="exp4">Une charge directe est affectable sans ambiguïté à un produit (ex : matière première spécifique). Une charge indirecte (ex : loyer, énergie) concerne plusieurs produits et doit être ventilée via des clés de répartition.</div>
+  </div>
+
+  <div class="q-card" data-num="05" id="q5">
+    <p class="question-text">5. Le coût de revient complet d'un produit inclut :</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q5" value="a"><span class="option-dot"></span>Uniquement les charges variables de production</label>
+      <label class="option-label"><input type="radio" name="q5" value="b"><span class="option-dot"></span>Toutes les charges, fixes et variables, directes et indirectes, de la production à la distribution</label>
+      <label class="option-label"><input type="radio" name="q5" value="c"><span class="option-dot"></span>Les charges de production uniquement (sans distribution ni administration)</label>
+      <label class="option-label"><input type="radio" name="q5" value="d"><span class="option-dot"></span>Le coût d'achat des matières premières uniquement</label>
+    </div>
+    <div class="explanation" id="exp5">La méthode du coût complet intègre toutes les charges de l'entreprise : approvisionnement, production, distribution et administration, qu'elles soient fixes ou variables, directes ou indirectes.</div>
+  </div>
+
+  <div class="q-card" data-num="06" id="q6">
+    <p class="question-text">6. Quelle est la principale différence entre un coût complet et un coût de revient ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q6" value="a"><span class="option-dot"></span>Ce sont deux termes strictement synonymes, il n'y a aucune différence</label>
+      <label class="option-label"><input type="radio" name="q6" value="b"><span class="option-dot"></span>Le coût complet désigne la méthode d'incorporation de toutes les charges ; le coût de revient est le coût complet calculé au stade final de la vente, après intégration des charges de production, distribution et administration</label>
+      <label class="option-label"><input type="radio" name="q6" value="c"><span class="option-dot"></span>Le coût complet n'intègre pas les charges fixes, contrairement au coût de revient</label>
+      <label class="option-label"><input type="radio" name="q6" value="d"><span class="option-dot"></span>Le coût de revient exclut les charges de distribution</label>
+    </div>
+    <div class="explanation" id="exp6">Le "coût complet" est une méthode consistant à incorporer toutes les charges (fixes et variables, directes et indirectes). Le "coût de revient" est l'aboutissement de cette méthode au stade final : il regroupe toutes les charges jusqu'à la vente (production + distribution + administration). En pratique, on parle souvent de coût de revient pour désigner ce résultat global, tandis que des coûts intermédiaires (coût d'achat, coût de production) constituent des étapes du calcul.</div>
+  </div>
+
+  <div class="q-card" data-num="07" id="q7">
+    <p class="question-text">7. Une entreprise vend un produit à 150 €. Son coût de revient est de 110 €. Quel est le taux de marge ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q7" value="a"><span class="option-dot"></span>26,7 %</label>
+      <label class="option-label"><input type="radio" name="q7" value="b"><span class="option-dot"></span>36,4 %</label>
+      <label class="option-label"><input type="radio" name="q7" value="c"><span class="option-dot"></span>40 %</label>
+      <label class="option-label"><input type="radio" name="q7" value="d"><span class="option-dot"></span>73,3 %</label>
+    </div>
+    <div class="explanation" id="exp7">Taux de marge = Marge / Coût de revient = (150 − 110) / 110 = 40 / 110 ≈ 36,4 %. À distinguer du taux de marque = marge / prix de vente = 40 / 150 ≈ 26,7 %.</div>
+  </div>
+
+  <div class="q-card" data-num="08" id="q8">
+    <p class="question-text">8. L'unité d'œuvre d'un centre "Usinage" est l'heure-machine. Le centre supporte 48 000 € de charges pour 1 200 heures. Quel est le coût de l'unité d'œuvre ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q8" value="a"><span class="option-dot"></span>25 €/h</label>
+      <label class="option-label"><input type="radio" name="q8" value="b"><span class="option-dot"></span>40 €/h</label>
+      <label class="option-label"><input type="radio" name="q8" value="c"><span class="option-dot"></span>50 €/h</label>
+      <label class="option-label"><input type="radio" name="q8" value="d"><span class="option-dot"></span>60 €/h</label>
+    </div>
+    <div class="explanation" id="exp8">Coût de l'UO = Charges du centre / Nombre d'UO = 48 000 / 1 200 = 40 €/heure-machine.</div>
+  </div>
+
+  <!-- ══════════════════════ SECTION 3 -->
+  <div class="section-title">
+    <span>III. Coûts variables &amp; Seuil de rentabilité</span>
+    <span class="section-badge">Analyse</span>
+  </div>
+
+  <div class="q-card" data-num="09" id="q9">
+    <p class="question-text">9. La marge sur coût variable (MCV) est égale à :</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q9" value="a"><span class="option-dot"></span>Chiffre d'affaires − Charges fixes</label>
+      <label class="option-label"><input type="radio" name="q9" value="b"><span class="option-dot"></span>Chiffre d'affaires − Charges variables</label>
+      <label class="option-label"><input type="radio" name="q9" value="c"><span class="option-dot"></span>Résultat net + Amortissements</label>
+      <label class="option-label"><input type="radio" name="q9" value="d"><span class="option-dot"></span>Prix de vente − Coût complet</label>
+    </div>
+    <div class="explanation" id="exp9">MCV = CA − Charges variables. Elle mesure ce qui reste pour couvrir les charges fixes. Une fois les charges fixes couvertes, la MCV génère du résultat.</div>
+  </div>
+
+  <div class="q-card" data-num="10" id="q10">
+    <p class="question-text">10. Le taux de marge sur coût variable d'une entreprise est de 40 %. Ses charges fixes sont de 80 000 €. Quel est son seuil de rentabilité (en CA) ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q10" value="a"><span class="option-dot"></span>32 000 €</label>
+      <label class="option-label"><input type="radio" name="q10" value="b"><span class="option-dot"></span>112 000 €</label>
+      <label class="option-label"><input type="radio" name="q10" value="c"><span class="option-dot"></span>200 000 €</label>
+      <label class="option-label"><input type="radio" name="q10" value="d"><span class="option-dot"></span>320 000 €</label>
+    </div>
+    <div class="explanation" id="exp10">Seuil de rentabilité = Charges fixes / Taux de MCV = 80 000 / 0,40 = 200 000 €. C'est le chiffre d'affaires à partir duquel l'entreprise couvre toutes ses charges.</div>
+  </div>
+
+  <div class="q-card" data-num="11" id="q11">
+    <p class="question-text">11. Si le CA réalisé est de 250 000 € et le seuil de rentabilité de 200 000 €, la marge de sécurité est de :</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q11" value="a"><span class="option-dot"></span>25 000 €</label>
+      <label class="option-label"><input type="radio" name="q11" value="b"><span class="option-dot"></span>50 000 €</label>
+      <label class="option-label"><input type="radio" name="q11" value="c"><span class="option-dot"></span>80 000 €</label>
+      <label class="option-label"><input type="radio" name="q11" value="d"><span class="option-dot"></span>200 000 €</label>
+    </div>
+    <div class="explanation" id="exp11">Marge de sécurité = CA réalisé − Seuil de rentabilité = 250 000 − 200 000 = 50 000 €. Elle représente la baisse de CA que l'entreprise peut absorber avant de tomber en perte.</div>
+  </div>
+
+  <div class="q-card" data-num="12" id="q12">
+    <p class="question-text">12. Lequel de ces éléments est une charge FIXE ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q12" value="a"><span class="option-dot"></span>Matières premières consommées</label>
+      <label class="option-label"><input type="radio" name="q12" value="b"><span class="option-dot"></span>Commissions des commerciaux sur ventes</label>
+      <label class="option-label"><input type="radio" name="q12" value="c"><span class="option-dot"></span>Loyer annuel des locaux</label>
+      <label class="option-label"><input type="radio" name="q12" value="d"><span class="option-dot"></span>Énergie de production proportionnelle aux quantités</label>
+    </div>
+    <div class="explanation" id="exp12">Le loyer est une charge fixe : son montant est indépendant du volume d'activité. Les matières premières, les commissions et l'énergie variable évoluent avec le niveau de production ou de ventes.</div>
+  </div>
+
+  <!-- ══════════════════════ SECTION 4 -->
+  <div class="section-title">
+    <span>IV. Cas pratique</span>
+    <span class="section-badge">Application</span>
+  </div>
+
+  <div class="q-card" data-num="13" id="q13">
+    <p class="question-text">13. Une entreprise fabrique 500 unités. Charges variables totales : 15 000 €. Charges fixes totales : 10 000 €. Quel est le coût de revient unitaire complet ?</p>
+    <div class="options">
+      <label class="option-label"><input type="radio" name="q13" value="a"><span class="option-dot"></span>30 €</label>
+      <label class="option-label"><input type="radio" name="q13" value="b"><span class="option-dot"></span>50 €</label>
+      <label class="option-label"><input type="radio" name="q13" value="c"><span class="option-dot"></span>45 €</label>
+      <label class="option-label"><input type="radio" name="q13" value="d"><span class="option-dot"></span>20 €</label>
+    </div>
+    <div class="explanation" id="exp13">Coût total = 15 000 + 10 000 = 25 000 €. Coût unitaire = 25 000 / 500 = 50 €. On intègre bien les charges fixes et variables dans le coût complet.</div>
+  </div>
+
+  <!-- Submit -->
+  <div class="submit-area">
+    <button class="submit-btn" id="submitBtn" onclick="submitTest()">Valider mes réponses →</button>
+  </div>
+
+  <!-- Results -->
+  <div class="results-panel" id="resultsPanel">
+    <div class="result-score" id="finalScore">—</div>
+    <div class="result-label">score / 13 questions</div>
+    <div id="resultName" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);margin-top:0.4rem;letter-spacing:0.05em;"></div>
+    <div class="result-profile" id="profileLabel">—</div>
+    <div class="result-advice" id="adviceText">—</div>
+    <div class="breakdown" id="breakdownArea"></div>
+    <button class="reset-btn" onclick="resetTest()">↺ Recommencer le test</button>
+  </div>
+
+
+  <!-- ══ LOGIN MODAL ══ -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-title">Espace Administrateur</div>
+      <div class="login-sub">ACCÈS RESTREINT · SAISIR LE MOT DE PASSE</div>
+      <input type="password" class="login-input" id="loginInput" placeholder="••••••" autocomplete="off">
+      <div class="login-error" id="loginError">Mot de passe incorrect.</div>
+      <button class="login-btn" onclick="checkLogin()">Accéder →</button>
+      <br>
+      <button class="login-cancel" onclick="closeLogin()">Annuler</button>
+    </div>
+  </div>
+
+  <!-- ══ ADMIN PANEL ══ -->
+  <div class="admin-overlay" id="adminOverlay">
+    <div class="admin-modal">
+      <div class="admin-header">
+        <div class="admin-header-title">
+          <span class="admin-badge">Admin</span>
+          Résultats des participants
+        </div>
+        <button class="admin-close" onclick="closeAdmin()">✕</button>
+      </div>
+      <div class="admin-toolbar">
+        <div class="admin-count">Total enregistré : <strong id="adminCount">0</strong> participant(s)</div>
+        <div class="admin-actions">
+          <button class="btn-export" onclick="exportExcel()">⬇ Exporter Excel</button>
+          <button class="btn-clear" onclick="clearData()">✕ Effacer tout</button>
+        </div>
+      </div>
+      <div class="admin-table-wrap" id="adminTableWrap">
+        <div class="empty-state" id="adminEmpty">Aucun résultat enregistré pour l'instant.</div>
+        <table class="admin-table" id="adminTable" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date &amp; heure</th>
+              <th>Nom adhérent</th>
+              <th>N° adhérent</th>
+              <th>Score</th>
+              <th>Profil</th>
+            </tr>
+          </thead>
+          <tbody id="adminTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <footer>
+    Test de Positionnement · Formation Étude de Coût · Contrôle de Gestion
+    <div style="font-family:'DM Mono',monospace;font-size:0.55rem;color:var(--line);margin-top:0.4rem;user-select:none;">Raccourci administrateur : Ctrl + Shift + A</div>
+  </footer>
+
+</div>
+<script>
+const ANSWERS = {
+  q1:'b', q2:'b', q3:'b',
+  q4:'b', q5:'b', q6:'b', q7:'b', q8:'b',
+  q9:'b', q10:'c', q11:'b', q12:'c',
+  q13:'b'
+};
+
+const SECTIONS = {
+  q1:'Comptabilité Générale', q2:'Comptabilité Générale', q3:'Comptabilité Générale',
+  q4:'Notions de Coûts', q5:'Notions de Coûts', q6:'Notions de Coûts', q7:'Notions de Coûts', q8:'Notions de Coûts',
+  q9:'Coûts Variables', q10:'Coûts Variables', q11:'Coûts Variables', q12:'Coûts Variables',
+  q13:'Cas Pratique'
+};
+
+const TOTAL = Object.keys(ANSWERS).length;
+
+document.querySelectorAll('.option-label input[type=radio]').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const name = this.name;
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.closest('.option-label').classList.remove('selected'));
+    this.closest('.option-label').classList.add('selected');
+    const answered = Object.keys(ANSWERS).filter(q => document.querySelector(`input[name="${q}"]:checked`)).length;
+    document.getElementById('scoreBar').classList.add('visible');
+    document.getElementById('scoreText').textContent = answered + ' / ' + TOTAL + ' répondues';
+  });
+});
+
+function submitTest() {
+  // Validate identity fields
+  const nom = document.getElementById('nomAdherent').value.trim();
+  const num = document.getElementById('numAdherent').value.trim();
+  const errEl = document.getElementById('identityError');
+  document.getElementById('nomAdherent').classList.remove('field-error');
+  document.getElementById('numAdherent').classList.remove('field-error');
+  errEl.classList.remove('visible');
+
+  if (!nom || !num) {
+    if (!nom) document.getElementById('nomAdherent').classList.add('field-error');
+    if (!num) document.getElementById('numAdherent').classList.add('field-error');
+    errEl.classList.add('visible');
+    document.getElementById('nomAdherent').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  let score = 0;
+  const sectionScores = {};
+  const details = [];
+
+  Object.keys(ANSWERS).forEach((q, idx) => {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const card = document.getElementById(q);
+    const exp = document.getElementById('exp' + q.slice(1));
+    const correct = ANSWERS[q];
+    const section = SECTIONS[q];
+    const qInfo = QUESTION_MAP[q] || {};
+
+    if (!sectionScores[section]) sectionScores[section] = {ok:0, total:0};
+    sectionScores[section].total++;
+
+    document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.disabled = true; });
+    document.querySelector(`input[name="${q}"][value="${correct}"]`).closest('.option-label').classList.add('correct-answer');
+
+    const chosenLetter = selected ? selected.value : null;
+    const isCorrect = chosenLetter === correct;
+
+    if (selected) {
+      if (isCorrect) {
+        score++;
+        sectionScores[section].ok++;
+        card.classList.add('answered-correct');
+      } else {
+        card.classList.add('answered-wrong');
+        selected.closest('.option-label').classList.add('wrong-answer');
+      }
+    } else {
+      card.classList.add('answered-wrong');
+    }
+    exp.classList.add('visible');
+
+    // Collect detail for this question
+    details.push({
+      qNum:          idx + 1,
+      section:       section,
+      question:      qInfo.text || q,
+      chosenLetter:  chosenLetter,
+      chosenText:    chosenLetter ? (qInfo.opts || {})[chosenLetter] || '' : '',
+      correctLetter: correct,
+      correctText:   (qInfo.opts || {})[correct] || '',
+      isCorrect:     isCorrect
+    });
+  });
+
+  document.getElementById('finalScore').textContent = score + '/' + TOTAL;
+  document.getElementById('submitBtn').style.display = 'none';
+
+  // Lock identity fields
+  document.getElementById('nomAdherent').disabled = true;
+  document.getElementById('numAdherent').disabled = true;
+
+  // Show name in results
+  const panel = document.getElementById('resultsPanel');
+  panel.classList.add('visible');
+
+  let profile, advice;
+  if (score <= 4) {
+    profile = '🔰 Débutant — Les fondamentaux sont à construire';
+    advice = 'Nous vous recommandons de commencer par un module de remise à niveau en comptabilité générale avant d\'aborder l\'étude de coût. Un accompagnement renforcé sera mis en place dès le début de la formation.';
+  } else if (score <= 7) {
+    profile = '📐 Intermédiaire — Des bases solides à consolider';
+    advice = 'Vous maîtrisez les concepts de base mais certaines notions clés méritent d\'être approfondies (répartition des charges indirectes, seuil de rentabilité). La formation vous permettra de combler ces lacunes ciblées.';
+  } else if (score <= 10) {
+    profile = '📊 Avancé — Un profil opérationnel';
+    advice = 'Vous avez une bonne compréhension générale. La formation vous permettra de renforcer votre maîtrise des méthodes avancées et des cas pratiques complexes.';
+  } else {
+    profile = '🏆 Expert — Prêt pour les modules avancés';
+    advice = 'Excellent niveau ! Vous maîtrisez déjà l\'essentiel. La formation vous apportera une montée en compétence sur les outils de contrôle de gestion avancés et les cas d\'entreprise complexes.';
+  }
+
+  document.getElementById('profileLabel').textContent = profile;
+  document.getElementById('adviceText').textContent = advice;
+  document.getElementById('resultName').textContent = nom + ' · N\u00b0 ' + num;
+
+  // Save result for admin
+  saveResult(nom, num, score, TOTAL, profile.replace(/[\uD800-\uDFFF].|./gu, m => m.length > 1 ? '' : m).trim(), details);
+
+  const breakdown = document.getElementById('breakdownArea');
+  breakdown.innerHTML = '';
+  Object.keys(sectionScores).forEach(sec => {
+    const s = sectionScores[sec];
+    const div = document.createElement('div');
+    div.className = 'breakdown-item';
+    div.innerHTML = `<span class="breakdown-val">${s.ok}/${s.total}</span>${sec}`;
+    breakdown.appendChild(div);
+  });
+
+  document.getElementById('scoreBar').classList.remove('visible');
+  panel.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function resetTest() {
+  document.querySelectorAll('input[type=radio]').forEach(r => {
+    r.checked = false; r.disabled = false;
+    r.closest('.option-label').classList.remove('selected','correct-answer','wrong-answer');
+  });
+  document.querySelectorAll('.q-card').forEach(c => c.classList.remove('answered-correct','answered-wrong'));
+  document.querySelectorAll('.explanation').forEach(e => e.classList.remove('visible'));
+  document.getElementById('resultsPanel').classList.remove('visible');
+  document.getElementById('submitBtn').style.display = '';
+  document.getElementById('scoreBar').classList.remove('visible');
+  // Reset identity
+  const nomEl = document.getElementById('nomAdherent');
+  const numEl = document.getElementById('numAdherent');
+  nomEl.value = ''; nomEl.disabled = false; nomEl.classList.remove('field-error');
+  numEl.value = ''; numEl.disabled = false; numEl.classList.remove('field-error');
+  document.getElementById('identityError').classList.remove('visible');
+  document.getElementById('resultName').textContent = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+
+// ══════════════════════════════════════════
+// ADMIN — Storage key & password
+// ══════════════════════════════════════════
+const ADMIN_PWD = 'UNA';
+const STORAGE_KEY = 'test_positionnement_results';
+
+const QUESTION_MAP = {
+  "q1": {
+    "text": "1. Quel document comptable présente la situation patrimoniale de l'entreprise à un instant donné ?",
+    "opts": {
+      "a": "Le compte de résultat",
+      "b": "Le bilan",
+      "c": "Le tableau de trésorerie",
+      "d": "L'annexe"
+    }
+  },
+  "q2": {
+    "text": "2. Le résultat net d'une entreprise est égal à :",
+    "opts": {
+      "a": "Chiffre d'affaires − Charges variables",
+      "b": "Produits totaux − Charges totales",
+      "c": "Excédent brut d'exploitation − Intérêts",
+      "d": "Marge brute − Charges fixes"
+    }
+  },
+  "q3": {
+    "text": "3. Dans le Plan Comptable Général, à quelle classe appartient le compte \"Clients\" ?",
+    "opts": {
+      "a": "Classe 1 — Capitaux",
+      "b": "Classe 4 — Comptes de tiers",
+      "c": "Classe 5 — Comptes financiers",
+      "d": "Classe 7 — Produits"
+    }
+  },
+  "q4": {
+    "text": "4. Quelle est la différence entre charges directes et charges indirectes ?",
+    "opts": {
+      "a": "Les charges directes sont fixes ; les indirectes sont variables",
+      "b": "Les charges directes sont affectables sans calcul intermédiaire à un coût ; les indirectes nécessitent une répartition",
+      "c": "Les charges indirectes ne font pas partie du coût de revient",
+      "d": "Les charges directes concernent uniquement la main-d'oeuvre"
+    }
+  },
+  "q5": {
+    "text": "5. Le coût de revient complet d'un produit inclut :",
+    "opts": {
+      "a": "Uniquement les charges variables de production",
+      "b": "Toutes les charges, fixes et variables, directes et indirectes, de la production à la distribution",
+      "c": "Les charges de production uniquement (sans distribution ni administration)",
+      "d": "Le coût d'achat des matières premières uniquement"
+    }
+  },
+  "q6": {
+    "text": "6. Quelle est la principale différence entre un coût complet et un coût de revient ?",
+    "opts": {
+      "a": "Ce sont deux termes strictement synonymes",
+      "b": "Le coût complet désigne la méthode ; le coût de revient est le coût complet au stade final de la vente",
+      "c": "Le coût complet n'intègre pas les charges fixes",
+      "d": "Le coût de revient exclut les charges de distribution"
+    }
+  },
+  "q7": {
+    "text": "7. Une entreprise vend un produit à 150 €. Son coût de revient est de 110 €. Quel est le taux de marge ?",
+    "opts": {
+      "a": "26,7 %",
+      "b": "36,4 %",
+      "c": "40 %",
+      "d": "73,3 %"
+    }
+  },
+  "q8": {
+    "text": "8. Centre \"Usinage\" : 48 000 € de charges pour 1 200 heures. Quel est le coût de l'unité d'oeuvre ?",
+    "opts": {
+      "a": "25 €/h",
+      "b": "40 €/h",
+      "c": "50 €/h",
+      "d": "60 €/h"
+    }
+  },
+  "q9": {
+    "text": "9. La marge sur coût variable (MCV) est égale à :",
+    "opts": {
+      "a": "Chiffre d'affaires − Charges fixes",
+      "b": "Chiffre d'affaires − Charges variables",
+      "c": "Résultat net + Amortissements",
+      "d": "Prix de vente − Coût complet"
+    }
+  },
+  "q10": {
+    "text": "10. Taux MCV = 40 %, charges fixes = 80 000 €. Quel est le seuil de rentabilité ?",
+    "opts": {
+      "a": "32 000 €",
+      "b": "112 000 €",
+      "c": "200 000 €",
+      "d": "320 000 €"
+    }
+  },
+  "q11": {
+    "text": "11. CA réalisé = 250 000 €, seuil de rentabilité = 200 000 €. Quelle est la marge de sécurité ?",
+    "opts": {
+      "a": "25 000 €",
+      "b": "50 000 €",
+      "c": "80 000 €",
+      "d": "200 000 €"
+    }
+  },
+  "q12": {
+    "text": "12. Lequel de ces éléments est une charge FIXE ?",
+    "opts": {
+      "a": "Matières premières consommées",
+      "b": "Commissions des commerciaux sur ventes",
+      "c": "Loyer annuel des locaux",
+      "d": "Énergie de production proportionnelle aux quantités"
+    }
+  },
+  "q13": {
+    "text": "13. 500 unités, charges variables 15 000 €, charges fixes 10 000 €. Quel est le coût de revient unitaire complet ?",
+    "opts": {
+      "a": "30 €",
+      "b": "50 €",
+      "c": "45 €",
+      "d": "20 €"
+    }
+  }
+};
+
+function getResults() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveResult(nom, num, score, total, profile, details) {
+  const results = getResults();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  results.push({ date: dateStr, nom, num, score, total, profile, details });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(results));
+}
+
+// ── Keyboard shortcut: Ctrl + Shift + A ──
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+    e.preventDefault();
+    openLogin();
+  }
+});
+
+// ── Login ──
+function openLogin() {
+  document.getElementById('loginInput').value = '';
+  document.getElementById('loginError').classList.remove('visible');
+  document.getElementById('loginInput').classList.remove('error');
+  document.getElementById('loginOverlay').classList.add('visible');
+  setTimeout(() => document.getElementById('loginInput').focus(), 100);
+}
+
+function closeLogin() {
+  document.getElementById('loginOverlay').classList.remove('visible');
+}
+
+document.getElementById('loginInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkLogin();
+  if (e.key === 'Escape') closeLogin();
+});
+
+function checkLogin() {
+  const val = document.getElementById('loginInput').value;
+  if (val === ADMIN_PWD) {
+    closeLogin();
+    openAdmin();
+  } else {
+    document.getElementById('loginInput').classList.add('error');
+    document.getElementById('loginError').classList.add('visible');
+    document.getElementById('loginInput').value = '';
+    setTimeout(() => document.getElementById('loginInput').focus(), 50);
+  }
+}
+
+// ── Admin panel ──
+function openAdmin() {
+  renderAdminTable();
+  document.getElementById('adminOverlay').classList.add('visible');
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('visible');
+}
+
+document.getElementById('adminOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeAdmin();
+});
+
+function renderAdminTable() {
+  const results = getResults();
+  const countEl = document.getElementById('adminCount');
+  const empty   = document.getElementById('adminEmpty');
+  const table   = document.getElementById('adminTable');
+  const tbody   = document.getElementById('adminTbody');
+
+  countEl.textContent = results.length;
+
+  if (results.length === 0) {
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  table.style.display = 'table';
+  tbody.innerHTML = '';
+
+  results.forEach((r, i) => {
+    const pct = Math.round((r.score / r.total) * 100);
+    const pillClass = pct <= 40 ? 'low' : pct <= 75 ? 'mid' : 'high';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:'DM Mono',monospace;color:var(--muted);font-size:0.7rem;">${i+1}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.72rem;white-space:nowrap;">${r.date}</td>
+      <td style="font-weight:500;">${r.nom}</td>
+      <td style="font-family:'DM Mono',monospace;">${r.num}</td>
+      <td><span class="score-pill ${pillClass}">${r.score}/${r.total} (${pct}%)</span></td>
+      <td style="font-size:0.78rem;">${r.profile}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function clearData() {
+  if (confirm('Supprimer définitivement tous les résultats enregistrés ?')) {
+    localStorage.removeItem(STORAGE_KEY);
+    renderAdminTable();
+  }
+}
+
+// ── Export Excel via SheetJS ──
+function exportExcel() {
+  const results = getResults();
+  if (results.length === 0) { alert('Aucun résultat à exporter.'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ─── ONGLET 1 : Résumé global ───────────────────────────────────────
+  const summaryData = [
+    ['#', 'Date & heure', 'Nom adhérent', 'N° adhérent', 'Score', 'Score (%)', 'Profil']
+  ];
+  results.forEach((r, i) => {
+    const pct = Math.round((r.score / r.total) * 100);
+    const profileClean = r.profile.replace(/[\u{1F300}-\u{1FFFF}]/gu, '').trim();
+    summaryData.push([i+1, r.date, r.nom, r.num, r.score + '/' + r.total, pct + '%', profileClean]);
+  });
+
+  const wsSum = XLSX.utils.aoa_to_sheet(summaryData);
+  wsSum['!cols'] = [{wch:4},{wch:17},{wch:26},{wch:15},{wch:9},{wch:10},{wch:38}];
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Résumé');
+
+  // ─── ONGLET 2 : Détail des réponses par participant ─────────────────
+  const detailData = [
+    [
+      'Participant #', 'Date & heure', 'Nom adhérent', 'N° adhérent',
+      'Score global', 'Score (%)', 'Section',
+      'N° Question', 'Intitulé de la question',
+      'Réponse choisie', 'Texte réponse choisie',
+      'Bonne réponse', 'Texte bonne réponse',
+      'Résultat'
+    ]
+  ];
+
+  results.forEach((r, i) => {
+    const pct = Math.round((r.score / r.total) * 100);
+    const details = r.details || [];
+    if (details.length === 0) {
+      // Fallback: ligne sans détail
+      detailData.push([i+1, r.date, r.nom, r.num, r.score + '/' + r.total, pct + '%', '—','—','—','—','—','—','—','—']);
+    } else {
+      details.forEach((d, di) => {
+        detailData.push([
+          i+1,
+          di === 0 ? r.date : '',
+          di === 0 ? r.nom  : '',
+          di === 0 ? r.num  : '',
+          di === 0 ? r.score + '/' + r.total : '',
+          di === 0 ? pct + '%' : '',
+          d.section,
+          d.qNum,
+          d.question,
+          d.chosenLetter ? d.chosenLetter.toUpperCase() : 'Non répondu',
+          d.chosenText   || '—',
+          d.correctLetter.toUpperCase(),
+          d.correctText,
+          d.isCorrect ? 'CORRECT' : (d.chosenLetter ? 'INCORRECT' : 'SANS RÉPONSE')
+        ]);
+      });
+    }
+  });
+
+  const wsDet = XLSX.utils.aoa_to_sheet(detailData);
+  wsDet['!cols'] = [
+    {wch:13},{wch:17},{wch:24},{wch:14},{wch:11},{wch:10},{wch:22},
+    {wch:12},{wch:72},{wch:14},{wch:50},{wch:13},{wch:50},{wch:14}
+  ];
+  XLSX.utils.book_append_sheet(wb, wsDet, 'Détail réponses');
+
+  const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+  XLSX.writeFile(wb, 'Resultats_Test_Positionnement_' + today + '.xlsx');
+}
+
+</script>
+</body>
+</html>
